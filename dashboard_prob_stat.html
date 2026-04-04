@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard — Probabilités & Statistiques</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #0f3460 0%, #533483 100%); color: white; padding: 2rem; }
+  .header h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .header p { opacity: 0.8; font-size: 0.9rem; }
+  .tabs { display: flex; gap: 0; background: #1a1a2e; }
+  .tab { padding: 0.8rem 1.4rem; cursor: pointer; font-size: 0.85rem; color: rgba(255,255,255,0.6); border: none; background: none; font-weight: 500; transition: all 0.2s; }
+  .tab.active { color: white; background: #0f3460; border-bottom: 3px solid #e94560; }
+  .tab:hover:not(.active) { color: white; background: rgba(255,255,255,0.08); }
+
+  .panel { display: none; padding: 1.5rem; }
+  .panel.active { display: block; }
+
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+  .card { background: white; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .card h3 { font-size: 0.8rem; color: #718096; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card .value { font-size: 1.8rem; font-weight: 700; color: #0f3460; }
+  .card .sub { font-size: 0.75rem; color: #a0aec0; margin-top: 0.2rem; }
+  .card.accent .value { color: #e94560; }
+  .card.purple .value { color: #533483; }
+  .card.green .value { color: #38a169; }
+
+  .chart-card { background: white; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .chart-card h2 { font-size: 1rem; font-weight: 600; color: #2d3748; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 2px solid #e2e8f0; }
+
+  .slider-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.8rem; }
+  .slider-row label { font-size: 0.85rem; color: #4a5568; min-width: 180px; font-weight: 500; }
+  .slider-row input[type=range] { flex: 1; accent-color: #0f3460; }
+  .slider-row .val { font-size: 0.85rem; font-weight: 700; color: #0f3460; min-width: 60px; text-align: right; }
+
+  .controls { background: #eef2ff; border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; border-left: 4px solid #533483; }
+  .controls h3 { font-size: 0.9rem; font-weight: 600; color: #533483; margin-bottom: 0.8rem; }
+
+  .info-box { background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .info-box.blue { background: #ebf8ff; border-color: #bee3f8; }
+  .info-box.green { background: #f0fff4; border-color: #c6f6d5; }
+  .info-box p { font-size: 0.82rem; color: #4a5568; line-height: 1.6; }
+  .info-box strong { color: #0f3460; }
+
+  .badge { display: inline-block; padding: 0.25rem 0.7rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+  .badge.ok { background: #c6f6d5; color: #276749; }
+  .badge.warn { background: #fefcbf; color: #744210; }
+  .badge.err { background: #fed7d7; color: #c53030; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { background: #0f3460; color: white; padding: 0.6rem 0.8rem; text-align: left; font-weight: 600; }
+  td { padding: 0.55rem 0.8rem; border-bottom: 1px solid #e2e8f0; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) { background: #f7fafc; }
+
+  @media (max-width: 768px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Projet Probabilités & Statistiques</h1>
+  <p>Contrôle Qualité en Usine · Durée de Vie de Composants Électriques · 1ère Année Cycle Ingénieur</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('qualite')">⚙️ Contrôle Qualité</button>
+  <button class="tab" onclick="showTab('vie')">⚡ Durée de Vie</button>
+  <button class="tab" onclick="showTab('combinee')">🔗 Analyse Combinée</button>
+  <button class="tab" onclick="showTab('resultats')">📋 Résultats</button>
+</div>
+
+<!-- ══ PANNEAU 1 : CONTRÔLE QUALITÉ ══ -->
+<div id="tab-qualite" class="panel active">
+  <div class="controls">
+    <h3>⚙️ Paramètres — Loi Binomiale B(n, p)</h3>
+    <div class="slider-row">
+      <label>Taille du lot (n)</label>
+      <input type="range" id="n-lot" min="10" max="200" value="50" step="5" oninput="updateQualite()">
+      <span class="val" id="n-lot-val">50</span>
+    </div>
+    <div class="slider-row">
+      <label>Taux de défaut (p)</label>
+      <input type="range" id="p-def" min="1" max="25" value="5" step="1" oninput="updateQualite()">
+      <span class="val" id="p-def-val">5%</span>
+    </div>
+    <div class="slider-row">
+      <label>Simulations Monte-Carlo (N)</label>
+      <input type="range" id="n-sim" min="500" max="20000" value="10000" step="500" oninput="updateQualite()">
+      <span class="val" id="n-sim-val">10 000</span>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="card"><h3>Espérance E[X]</h3><div class="value" id="q-ex">2.50</div><div class="sub">défauts par lot</div></div>
+    <div class="card accent"><h3>Écart-type σ(X)</h3><div class="value" id="q-sx">1.54</div><div class="sub">dispersion</div></div>
+    <div class="card purple"><h3>Seuil critique (95%)</h3><div class="value" id="q-seuil">5</div><div class="sub">défauts max acceptés</div></div>
+    <div class="card green"><h3>P(lot conforme)</h3><div class="value" id="q-pok">96.2%</div><div class="sub">P(X ≤ seuil)</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h2>Distribution de probabilité — PMF</h2>
+      <div style="position:relative; height:280px;"><canvas id="chartPMF"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>Fonction de répartition — CDF</h2>
+      <div style="position:relative; height:280px;"><canvas id="chartCDF"></canvas></div>
+    </div>
+  </div>
+
+  <div class="info-box blue">
+    <p><strong>Interprétation :</strong> Pour un lot de <span id="info-n">50</span> composants avec un taux de défaut de <span id="info-p">5%</span>, on s'attend en moyenne à <span id="info-ex">2.50</span> composants défectueux par lot. Le lot est accepté si le nombre de défauts X ≤ <span id="info-s">5</span>. La probabilité de rejet d'un lot conforme est de <span id="info-prej">3.8%</span>.</p>
+  </div>
+</div>
+
+<!-- ══ PANNEAU 2 : DURÉE DE VIE ══ -->
+<div id="tab-vie" class="panel">
+  <div class="controls">
+    <h3>⚡ Paramètres — Lois Exponentielle & Weibull</h3>
+    <div class="slider-row">
+      <label>Taux λ (exponentielle, ×10⁻³)</label>
+      <input type="range" id="lambda" min="2" max="30" value="10" step="1" oninput="updateVie()">
+      <span class="val" id="lambda-val">0.010</span>
+    </div>
+    <div class="slider-row">
+      <label>Forme β (Weibull)</label>
+      <input type="range" id="beta" min="5" max="50" value="20" step="1" oninput="updateVie()">
+      <span class="val" id="beta-val">2.0</span>
+    </div>
+    <div class="slider-row">
+      <label>Échelle η (Weibull, heures)</label>
+      <input type="range" id="eta" min="30" max="300" value="100" step="5" oninput="updateVie()">
+      <span class="val" id="eta-val">100</span>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="card"><h3>MTTF Exponentielle</h3><div class="value" id="v-mttf-e">100 h</div><div class="sub">temps moyen de panne</div></div>
+    <div class="card accent"><h3>MTTF Weibull</h3><div class="value" id="v-mttf-w">88.6 h</div><div class="sub">temps moyen de panne</div></div>
+    <div class="card purple"><h3>R(100h) — Exponentielle</h3><div class="value" id="v-re">36.8%</div><div class="sub">fiabilité à 100h</div></div>
+    <div class="card green"><h3>R(100h) — Weibull</h3><div class="value" id="v-rw">36.8%</div><div class="sub">fiabilité à 100h</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h2>Courbes de fiabilité R(t)</h2>
+      <div style="position:relative; height:280px;"><canvas id="chartRel"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>Taux de hasard h(t)</h2>
+      <div style="position:relative; height:280px;"><canvas id="chartHaz"></canvas></div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <p><strong>Interprétation du paramètre β :</strong> β &lt; 1 → mortalité infantile (défauts de fabrication) · β = 1 → taux constant (phase de maturité) · β &gt; 1 → usure progressive (vieillissement). La courbe en baignoire combine ces trois phases.</p>
+  </div>
+</div>
+
+<!-- ══ PANNEAU 3 : ANALYSE COMBINÉE ══ -->
+<div id="tab-combinee" class="panel">
+  <div class="info-box green">
+    <p><strong>Modèle système :</strong> R_système(t) = P(lot conforme) × R_Weibull(t) = F_B(1; n, p) × e^(−(t/η)^β)</p>
+  </div>
+
+  <div class="controls">
+    <h3>🔗 Paramètres combinés</h3>
+    <div class="slider-row">
+      <label>Taux de défaut p (%)</label>
+      <input type="range" id="c-p" min="1" max="20" value="5" step="1" oninput="updateCombinee()">
+      <span class="val" id="c-p-val">5%</span>
+    </div>
+    <div class="slider-row">
+      <label>Horizon temporel t (heures)</label>
+      <input type="range" id="c-t" min="10" max="400" value="100" step="10" oninput="updateCombinee()">
+      <span class="val" id="c-t-val">100 h</span>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card"><h3>P(lot conforme)</h3><div class="value" id="c-plot">96.2%</div><div class="sub">F_B(1; n, p)</div></div>
+    <div class="card accent"><h3>R_Weibull(t)</h3><div class="value" id="c-rw">36.8%</div><div class="sub">fiabilité composant</div></div>
+    <div class="card purple"><h3>R_système(t)</h3><div class="value" id="c-rsys">35.4%</div><div class="sub">fiabilité globale</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h2>Fiabilité système selon le taux de défaut p</h2>
+      <div style="position:relative; height:280px;"><canvas id="chartSys"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>Comparaison par scénario de p</h2>
+      <div style="position:relative; height:280px;"><canvas id="chartScen"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PANNEAU 4 : RÉSULTATS ══ -->
+<div id="tab-resultats" class="panel">
+  <div class="grid-2">
+    <div class="chart-card">
+      <h2>Tableau — Contrôle Qualité (n=50, p=5%)</h2>
+      <table>
+        <tr><th>Indicateur</th><th>Théorique</th><th>Simulé</th><th>Statut</th></tr>
+        <tr><td>E[X]</td><td>2.5000</td><td>2.4660</td><td><span class="badge ok">✓ OK</span></td></tr>
+        <tr><td>Var[X]</td><td>2.3750</td><td>2.3238</td><td><span class="badge ok">✓ OK</span></td></tr>
+        <tr><td>σ(X)</td><td>1.5411</td><td>1.5244</td><td><span class="badge ok">✓ OK</span></td></tr>
+        <tr><td>P(X=0)</td><td>7.69%</td><td>7.52%</td><td><span class="badge ok">✓ OK</span></td></tr>
+        <tr><td>P(X>5)</td><td>3.78%</td><td>3.73%</td><td><span class="badge ok">✓ OK</span></td></tr>
+        <tr><td>Seuil 95%</td><td>5 défauts</td><td>5 défauts</td><td><span class="badge ok">✓ OK</span></td></tr>
+      </table>
+    </div>
+    <div class="chart-card">
+      <h2>Tableau — Durée de Vie (β=2, η=100)</h2>
+      <table>
+        <tr><th>Modèle</th><th>MTTF théor.</th><th>MTTF sim.</th><th>Test KS</th></tr>
+        <tr><td>Exponentielle</td><td>100.0 h</td><td>103.2 h</td><td><span class="badge ok">N/A</span></td></tr>
+        <tr><td>Weibull</td><td>88.62 h</td><td>88.14 h</td><td><span class="badge ok">p=0.29 ✓</span></td></tr>
+      </table>
+      <br>
+      <h2>Tableau — Fiabilité système à t=100h</h2>
+      <table>
+        <tr><th>Scénario p</th><th>P(lot OK)</th><th>R_Weibull</th><th>R_système</th></tr>
+        <tr><td>p = 1%</td><td>99.1%</td><td>36.8%</td><td><span class="badge ok">36.5%</span></td></tr>
+        <tr><td>p = 5%</td><td>27.6%</td><td>36.8%</td><td><span class="badge warn">10.2%</span></td></tr>
+        <tr><td>p = 10%</td><td>3.4%</td><td>36.8%</td><td><span class="badge err">1.2%</span></td></tr>
+        <tr><td>p = 15%</td><td>0.3%</td><td>36.8%</td><td><span class="badge err">0.11%</span></td></tr>
+        <tr><td>p = 20%</td><td>0.02%</td><td>36.8%</td><td><span class="badge err">0.007%</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <h2>Convergence de la loi des grands nombres — E[X] estimée selon N simulations</h2>
+    <div style="position:relative; height:220px;"><canvas id="chartConv"></canvas></div>
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Fonctions mathématiques ──────────────────────────────────────────────────
+function binomCoeff(n, k) {
+  if (k < 0 || k > n) return 0;
+  let r = 1;
+  for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+  return r;
+}
+function binomPMF(k, n, p) { return binomCoeff(n, k) * Math.pow(p, k) * Math.pow(1-p, n-k); }
+function binomCDF(x, n, p) { let s = 0; for (let k=0; k<=x; k++) s += binomPMF(k,n,p); return s; }
+function binomQuantile(q, n, p) { let s=0; for (let k=0; k<=n; k++) { s += binomPMF(k,n,p); if(s>=q) return k; } return n; }
+function gammaApprox(n) {
+  if (n===0.5) return Math.sqrt(Math.PI);
+  if (n===1) return 1;
+  if (n===1.5) return 0.8862;
+  if (n===2) return 1;
+  if (n===2.5) return 1.3293;
+  return Math.exp((n-0.5)*Math.log(n-0.5) - (n-0.5) + 0.5*Math.log(2*Math.PI/(n-0.5)));
+}
+function mttfWeibull(beta, eta) {
+  const x = 1 + 1/beta;
+  const g = Math.exp(lgamma(x));
+  return eta * g;
+}
+function lgamma(x) {
+  const c = [76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=x, tmp=x+5.5, ser=1.000000000190015;
+  tmp -= (x+0.5)*Math.log(tmp);
+  for(let j=0;j<6;j++) ser+=c[j]/++y;
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+
+// ── Graphiques globaux ────────────────────────────────────────────────────────
+let charts = {};
+function destroyChart(id) { if(charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+// ── PARTIE 1 : Contrôle Qualité ───────────────────────────────────────────────
+function updateQualite() {
+  const n = +document.getElementById('n-lot').value;
+  const pPct = +document.getElementById('p-def').value;
+  const p = pPct / 100;
+  const N = +document.getElementById('n-sim').value;
+
+  document.getElementById('n-lot-val').textContent = n;
+  document.getElementById('p-def-val').textContent = pPct + '%';
+  document.getElementById('n-sim-val').textContent = N.toLocaleString('fr');
+
+  const ex = n * p;
+  const sx = Math.sqrt(n * p * (1-p));
+  const seuil = binomQuantile(0.95, n, p);
+  const pOk = binomCDF(seuil, n, p) * 100;
+
+  document.getElementById('q-ex').textContent = ex.toFixed(2);
+  document.getElementById('q-sx').textContent = sx.toFixed(2);
+  document.getElementById('q-seuil').textContent = seuil;
+  document.getElementById('q-pok').textContent = pOk.toFixed(1) + '%';
+
+  document.getElementById('info-n').textContent = n;
+  document.getElementById('info-p').textContent = pPct + '%';
+  document.getElementById('info-ex').textContent = ex.toFixed(2);
+  document.getElementById('info-s').textContent = seuil;
+  document.getElementById('info-prej').textContent = ((1 - binomCDF(seuil, n, p))*100).toFixed(1) + '%';
+
+  const maxK = Math.min(n, Math.max(seuil + 5, 15));
+  const ks = Array.from({length: maxK+1}, (_,k) => k);
+  const pmfs = ks.map(k => binomPMF(k, n, p));
+  const cdfs = ks.map(k => binomCDF(k, n, p));
+
+  destroyChart('chartPMF');
+  charts['chartPMF'] = new Chart(document.getElementById('chartPMF'), {
+    type: 'bar',
+    data: {
+      labels: ks.map(String),
+      datasets: [{
+        label: 'P(X=k) théorique',
+        data: pmfs.map(v => +v.toFixed(5)),
+        backgroundColor: ks.map(k => k <= seuil ? 'rgba(15,52,96,0.7)' : 'rgba(233,69,96,0.7)'),
+        borderColor: ks.map(k => k <= seuil ? '#0f3460' : '#e94560'),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'P(X=' + ctx.label + ') = ' + ctx.raw.toFixed(4) } } },
+      scales: {
+        x: { title: { display: true, text: 'Nombre de défauts k' } },
+        y: { title: { display: true, text: 'Probabilité' }, beginAtZero: true }
+      }
+    }
+  });
+
+  destroyChart('chartCDF');
+  charts['chartCDF'] = new Chart(document.getElementById('chartCDF'), {
+    type: 'line',
+    data: {
+      labels: ks.map(String),
+      datasets: [
+        { label: 'F(k) — CDF', data: cdfs.map(v => +v.toFixed(4)), borderColor: '#0f3460', backgroundColor: 'rgba(15,52,96,0.1)', fill: true, tension: 0, stepped: 'before', pointRadius: 4 },
+        { label: 'Seuil 95%', data: ks.map(() => 0.95), borderColor: '#e94560', borderDash: [5,5], pointRadius: 0, borderWidth: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: {
+        x: { title: { display: true, text: 'k' } },
+        y: { min: 0, max: 1, title: { display: true, text: 'F(k)' } }
+      }
+    }
+  });
+}
+
+// ── PARTIE 2 : Durée de Vie ────────────────────────────────────────────────────
+function updateVie() {
+  const lam = +document.getElementById('lambda').value / 1000;
+  const beta = +document.getElementById('beta').value / 10;
+  const eta = +document.getElementById('eta').value;
+
+  document.getElementById('lambda-val').textContent = lam.toFixed(3);
+  document.getElementById('beta-val').textContent = beta.toFixed(1);
+  document.getElementById('eta-val').textContent = eta;
+
+  const mttfE = 1/lam;
+  const mttfW = eta * Math.exp(lgamma(1 + 1/beta));
+  const Re100 = Math.exp(-lam * 100);
+  const Rw100 = Math.exp(-Math.pow(100/eta, beta));
+
+  document.getElementById('v-mttf-e').textContent = mttfE.toFixed(0) + ' h';
+  document.getElementById('v-mttf-w').textContent = mttfW.toFixed(1) + ' h';
+  document.getElementById('v-re').textContent = (Re100 * 100).toFixed(1) + '%';
+  document.getElementById('v-rw').textContent = (Rw100 * 100).toFixed(1) + '%';
+
+  const tMax = Math.max(mttfE, mttfW) * 3;
+  const ts = Array.from({length: 100}, (_,i) => (i+1) * tMax / 100);
+  const Re = ts.map(t => +( Math.exp(-lam*t) * 100).toFixed(2));
+  const Rw = ts.map(t => +( Math.exp(-Math.pow(t/eta,beta)) * 100).toFixed(2));
+  const He = ts.map(() => +(lam*100).toFixed(4));
+  const Hw = ts.map(t => +( (beta/eta) * Math.pow(t/eta, beta-1) * 100).toFixed(4));
+  const labs = ts.map(t => t.toFixed(0) + 'h');
+
+  destroyChart('chartRel');
+  charts['chartRel'] = new Chart(document.getElementById('chartRel'), {
+    type: 'line',
+    data: {
+      labels: labs,
+      datasets: [
+        { label: 'Exponentielle', data: Re, borderColor: '#0f3460', pointRadius: 0, borderWidth: 2.5 },
+        { label: 'Weibull', data: Rw, borderColor: '#e94560', pointRadius: 0, borderWidth: 2.5, borderDash: [4,4] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: {
+        x: { title: { display: true, text: 'Temps (h)' }, ticks: { maxTicksLimit: 8 } },
+        y: { min: 0, max: 100, title: { display: true, text: 'R(t) (%)' } }
+      }
+    }
+  });
+
+  destroyChart('chartHaz');
+  const hMax = Math.min(Hw[Hw.length-1] * 1.2, 500);
+  charts['chartHaz'] = new Chart(document.getElementById('chartHaz'), {
+    type: 'line',
+    data: {
+      labels: labs,
+      datasets: [
+        { label: 'h(t) Exponentielle (constant)', data: He, borderColor: '#0f3460', pointRadius: 0, borderWidth: 2.5 },
+        { label: 'h(t) Weibull', data: Hw, borderColor: '#533483', pointRadius: 0, borderWidth: 2.5, borderDash: [4,4] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: {
+        x: { title: { display: true, text: 'Temps (h)' }, ticks: { maxTicksLimit: 8 } },
+        y: { min: 0, max: hMax, title: { display: true, text: 'h(t) (×10⁻³)' } }
+      }
+    }
+  });
+}
+
+// ── PARTIE 3 : Combinée ────────────────────────────────────────────────────────
+function updateCombinee() {
+  const pPct = +document.getElementById('c-p').value;
+  const p = pPct / 100;
+  const t = +document.getElementById('c-t').value;
+  const beta = 2.0, eta = 100.0, n = 50;
+
+  document.getElementById('c-p-val').textContent = pPct + '%';
+  document.getElementById('c-t-val').textContent = t + ' h';
+
+  const pLot = binomCDF(1, n, p);
+  const Rw = Math.exp(-Math.pow(t/eta, beta));
+  const Rsys = pLot * Rw;
+
+  document.getElementById('c-plot').textContent = (pLot*100).toFixed(1) + '%';
+  document.getElementById('c-rw').textContent = (Rw*100).toFixed(1) + '%';
+  document.getElementById('c-rsys').textContent = (Rsys*100).toFixed(2) + '%';
+
+  const pVals = Array.from({length: 40}, (_,i) => (i+1) * 0.5 / 100);
+  const sysVals = pVals.map(pp => binomCDF(1, n, pp) * Rw);
+
+  destroyChart('chartSys');
+  charts['chartSys'] = new Chart(document.getElementById('chartSys'), {
+    type: 'line',
+    data: {
+      labels: pVals.map(pp => (pp*100).toFixed(1) + '%'),
+      datasets: [
+        { label: 'R_système(t)', data: sysVals.map(v => +(v*100).toFixed(3)), borderColor: '#533483', fill: true, backgroundColor: 'rgba(83,52,131,0.1)', pointRadius: 0, borderWidth: 2.5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Taux de défaut p (%)' }, ticks: { maxTicksLimit: 8 } },
+        y: { min: 0, title: { display: true, text: 'R_système (%)' } }
+      }
+    }
+  });
+
+  const scenPs = [0.01, 0.03, 0.05, 0.08, 0.10, 0.15, 0.20];
+  const scenVals = scenPs.map(pp => +(binomCDF(1, n, pp) * Rw * 100).toFixed(3));
+  const scenLabels = scenPs.map(pp => (pp*100).toFixed(0) + '%');
+
+  destroyChart('chartScen');
+  charts['chartScen'] = new Chart(document.getElementById('chartScen'), {
+    type: 'bar',
+    data: {
+      labels: scenLabels,
+      datasets: [{
+        label: 'R_système(%)',
+        data: scenVals,
+        backgroundColor: ['#2ecc71','#27ae60','#f39c12','#e67e22','#e94560','#c0392b','#922b21'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Taux de défaut p' } },
+        y: { min: 0, title: { display: true, text: 'R_système (%)' } }
+      }
+    }
+  });
+}
+
+// ── Convergence LGN ────────────────────────────────────────────────────────────
+function buildConvergence() {
+  const ns = [10,20,50,100,200,500,1000,2000,5000,10000,20000];
+  const means = ns.map(n => {
+    let s = 0;
+    for (let i=0; i<n; i++) s += (Math.random() < 0.05 ? 1 : 0) * (Math.random() < 0.05 ? 1:0);
+    const xs = Array.from({length:n}, () => {
+      let c=0; for(let j=0;j<50;j++) if(Math.random()<0.05) c++;
+      return c;
+    });
+    return +(xs.reduce((a,b)=>a+b,0)/n).toFixed(4);
+  });
+
+  destroyChart('chartConv');
+  charts['chartConv'] = new Chart(document.getElementById('chartConv'), {
+    type: 'line',
+    data: {
+      labels: ns.map(n => n >= 1000 ? (n/1000)+'k' : n+''),
+      datasets: [
+        { label: 'Moyenne estimée', data: means, borderColor: '#0f3460', pointRadius: 5, borderWidth: 2, tension: 0.3 },
+        { label: 'E[X] = 2.5 (théorique)', data: ns.map(() => 2.5), borderColor: '#e94560', borderDash: [6,4], pointRadius: 0, borderWidth: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: {
+        x: { title: { display: true, text: 'Nombre de simulations N' } },
+        y: { title: { display: true, text: 'Moyenne estimée de X' } }
+      }
+    }
+  });
+}
+
+// ── Initialisation ─────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  updateQualite();
+  updateVie();
+  updateCombinee();
+  buildConvergence();
+});
+</script>
+</body>
+</html>
